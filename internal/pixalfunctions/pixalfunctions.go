@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	highThreshold, lowThreshold = 7500, 20000
+	highThreshold, lowThreshold float32 = 0.90, 0.10
 )
 
 /*GreyscaleHandle converts loadedImage image.Image to greyscale version*/
@@ -27,7 +27,7 @@ func InvertColor(loadedImage image.Image) image.Image {
 }
 func invertColor(p image.Point, imageOld image.Image) color.Color {
 	red, green, blue, alpha := imageOld.At(p.X, p.Y).RGBA()
-	return color.RGBA64{255 - uint16(red), 255 - uint16(green), 255 - uint16(blue), uint16(alpha)}
+	return color.RGBA64{uint16(alpha - red), uint16(alpha - green), uint16(alpha - blue), uint16(alpha)}
 }
 
 /*DoubleThresholdHandle removes low intensity pixals*/
@@ -35,14 +35,14 @@ func DoubleThresholdHandle(loadedImage image.Image) image.Image {
 	return actionengine.ActOnImagePixel(loadedImage, doubleThreshold, runtime.GOMAXPROCS(0))
 }
 func doubleThreshold(p image.Point, imageOld image.Image) color.Color {
-	r, _, _, _ := imageOld.At(p.X, p.Y).RGBA()
-	if r > highThreshold {
-		return color.Gray16Model.Convert(imageOld.At(p.X, p.Y))
-	} else if r > lowThreshold {
-		return color.Gray16Model.Convert(imageOld.At(p.X, p.Y))
+	pixal := imageOld.At(p.X, p.Y)
+	red, green, blue, alpha := pixal.RGBA()
+	iToA := float32(red+green+blue) / float32(3*alpha)
+	if iToA > highThreshold || iToA < lowThreshold {
+		return color.RGBA64{0, 0, 0, uint16(alpha)}
+	} else {
+		return pixal
 	}
-
-	return color.Gray16{0}
 }
 
 /*FillInGapsHandle connects some lines to make more solid edges*/

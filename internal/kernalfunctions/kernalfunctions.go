@@ -24,7 +24,7 @@ func gaussianFilter(p image.Point, imageOld image.Image, kernalSize int) [][]col
 	p = boundsKernal(p, imageOld, kernalSize)
 
 	value := float64(0)
-	forKernal(kernalSize, func(i, j int) {
+	ForSquare(kernalSize, func(i, j int) {
 		aa := math.Pow(float64(i-(k+1)), 2)
 		bb := math.Pow(float64(j-(k+1)), 2)
 		cc := 2 * math.Pow(sigma, 2)
@@ -63,7 +63,7 @@ func sobelFilter(p image.Point, imageOld image.Image, kernalSize int) [][]color.
 			{2, 0, -2},
 			{1, 0, -1}}
 		// gX, gY := float64(0), float64(0)
-		forKernal(kernalSize, func(i, j int) {
+		ForSquare(kernalSize, func(i, j int) {
 			r, _, _, _ := imageOld.At(p.X+i, p.Y+j).RGBA()
 
 			gX += kernalX[i][j] * float64(r)
@@ -122,7 +122,7 @@ func boundsKernal(p image.Point, imageIn image.Image, kernalSize int) image.Poin
 	return p
 }
 
-func forKernal(kernalSize int, action func(int, int)) {
+func ForSquare(kernalSize int, action func(int, int)) {
 	for i := 0; i < kernalSize; i++ {
 		for j := 0; j < kernalSize; j++ {
 			action(i, j)
