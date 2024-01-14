@@ -6,8 +6,8 @@ import (
 	"image/color"
 	"testing"
 
+	"github.com/jlowell000/utils"
 	"github.com/stretchr/testify/assert"
-	"jlowell000.github.io/init/internal/kernalfunctions"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 )
 
 func Test_greyscale(t *testing.T) {
-	kernalfunctions.ForSquare(testMax+1, func(i, j int) {
+	utils.ForSquare(testMax+1, func(i, j int) {
 		expected := color.Gray16Model.Convert(testImage.At(i, j))
 		actual := greyscale(image.Point{X: i, Y: j}, testImage)
 
@@ -34,7 +34,7 @@ func Test_greyscale(t *testing.T) {
 }
 
 func Test_invertColor(t *testing.T) {
-	kernalfunctions.ForSquare(testMax+1, func(i, j int) {
+	utils.ForSquare(testMax+1, func(i, j int) {
 
 		red, green, blue, alpha := testImage.At(i, j).RGBA()
 		expected := color.RGBA64{uint16(alpha - red), uint16(alpha - green), uint16(alpha - blue), uint16(alpha)}
@@ -45,7 +45,7 @@ func Test_invertColor(t *testing.T) {
 }
 
 func Test_doubleThreshold(t *testing.T) {
-	kernalfunctions.ForSquare(testMax+1, func(i, j int) {
+	utils.ForSquare(testMax+1, func(i, j int) {
 		pixal := testImage.At(i, j)
 		red, green, blue, alpha := pixal.RGBA()
 		iToA := float32(red+green+blue) / float32(3*alpha)

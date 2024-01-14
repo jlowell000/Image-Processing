@@ -3,7 +3,6 @@ package pixalfunctions
 import (
 	"image"
 	"image/color"
-	"runtime"
 
 	"jlowell000.github.io/init/internal/actionengine"
 )
@@ -14,7 +13,7 @@ const (
 
 /*GreyscaleHandle converts loadedImage image.Image to greyscale version*/
 func GreyscaleHandle(loadedImage image.Image) image.Image {
-	return actionengine.ActOnImagePixel(loadedImage, greyscale, runtime.GOMAXPROCS(0))
+	return actionengine.ActOnImagePixel(loadedImage, greyscale)
 }
 
 func greyscale(p image.Point, imageOld image.Image) color.Color {
@@ -23,7 +22,7 @@ func greyscale(p image.Point, imageOld image.Image) color.Color {
 
 /*InvertColor inverts image colors*/
 func InvertColor(loadedImage image.Image) image.Image {
-	return actionengine.ActOnImagePixel(loadedImage, invertColor, runtime.GOMAXPROCS(0))
+	return actionengine.ActOnImagePixel(loadedImage, invertColor)
 }
 func invertColor(p image.Point, imageOld image.Image) color.Color {
 	red, green, blue, alpha := imageOld.At(p.X, p.Y).RGBA()
@@ -32,7 +31,7 @@ func invertColor(p image.Point, imageOld image.Image) color.Color {
 
 /*DoubleThresholdHandle removes low intensity pixals*/
 func DoubleThresholdHandle(loadedImage image.Image) image.Image {
-	return actionengine.ActOnImagePixel(loadedImage, doubleThreshold, runtime.GOMAXPROCS(0))
+	return actionengine.ActOnImagePixel(loadedImage, doubleThreshold)
 }
 func doubleThreshold(p image.Point, imageOld image.Image) color.Color {
 	pixal := imageOld.At(p.X, p.Y)
@@ -47,7 +46,7 @@ func doubleThreshold(p image.Point, imageOld image.Image) color.Color {
 
 /*FillInGapsHandle connects some lines to make more solid edges*/
 func FillInGapsHandle(loadedImage image.Image) image.Image {
-	return actionengine.ActOnImagePixel(loadedImage, fillInGaps, runtime.GOMAXPROCS(0))
+	return actionengine.ActOnImagePixel(loadedImage, fillInGaps)
 }
 
 func fillInGaps(p image.Point, imageOld image.Image) color.Color {

@@ -4,51 +4,96 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"runtime"
 
+	"github.com/jlowell000/utils"
+	"github.com/shopspring/decimal"
 	"jlowell000.github.io/init/internal/actionengine"
 )
 
-const (
-	sigma = 1.6
+var (
+	radius int64               = 5
+	sigma  float64             = math.Max(float64(radius)/2.0, 1.0)
+	kernal [][]decimal.Decimal = calculateGaussianKernal(radius, decimal.NewFromFloat(sigma))
 )
 
 /*GaussianHandle runs Gaussian Filter over image*/
 func GaussianHandle(loadedImage image.Image) image.Image {
-	return actionengine.ActOnImageKernal(loadedImage, gaussianFilter, 7, runtime.GOMAXPROCS(0)/5)
+	return actionengine.ActOnImagePixel(loadedImage, gaussianFilter)
 }
 
-func gaussianFilter(p image.Point, imageOld image.Image, kernalSize int) [][]color.Color {
+func gaussianFilter(p image.Point, imageIn image.Image) color.Color {
+	if pointKernalInBounds(p, imageIn, radius) {
+		red, green, blue := decimal.Zero, decimal.Zero, decimal.Zero
+		for i := -radius; i <= radius; i++ {
+			for j := radius; j <= radius; j++ {
+				x, y := p.X+int(i), p.Y+int(j)
+				r, b, g, _ := imageIn.At(x, y).RGBA()
+				k := kernal[i+radius][j+radius]
+				red = red.Add(decimal.NewFromInt32(int32(r))).Mul(k)
+				blue = blue.Add(decimal.NewFromInt32(int32(b))).Mul(k)
+				green = green.Add(decimal.NewFromInt32(int32(g))).Mul(k)
+				// alpha += float64(a) * k
+			}
+		}
+		_, _, _, a := imageIn.At(p.X, p.Y).RGBA()
+		return color.RGBA{
+			R: uint8(red.IntPart()),
+			B: uint8(blue.IntPart()),
+			G: uint8(green.IntPart()),
+			A: uint8(a),
+		}
 
-	k := (kernalSize - 1) / 2
-	p = boundsKernal(p, imageOld, kernalSize)
+	}
+	return GetPointColor(p, imageIn)
+}
 
-	value := float64(0)
-	ForSquare(kernalSize, func(i, j int) {
-		aa := math.Pow(float64(i-(k+1)), 2)
-		bb := math.Pow(float64(j-(k+1)), 2)
-		cc := 2 * math.Pow(sigma, 2)
-		dd := 2 * math.Pi * math.Pow(sigma, 2)
+func calculateGaussianKernal(radius int64, sigma decimal.Decimal) [][]decimal.Decimal {
+	kernalWidth := int64((2 * radius) + 1)
+	kernal := make([][]decimal.Decimal, kernalWidth)
+	for i := range kernal {
+		kernal[i] = make([]decimal.Decimal, kernalWidth)
+	}
+	sum := decimal.Zero
 
-		h := (1 / dd) * math.Exp(-((aa + bb) / cc))
-
-		r, _, _, _ := imageOld.At(p.X+i, p.Y+j).RGBA()
-		value += float64(r) * h
-	})
-
-	output := make([][]color.Color, kernalSize)
-	for i := range output {
-		output[i] = make([]color.Color, kernalSize)
-		for j := range output[i] {
-			output[i][j] = color.Gray16{uint16(value)}
+	for i := int64(1); i <= kernalWidth; i++ {
+		for j := int64(1); j <= kernalWidth; j++ {
+			kernal[i-1][j-1] = gaussianKernalValue(
+				decimal.NewFromInt(i),
+				decimal.NewFromInt(j),
+				decimal.NewFromInt(radius),
+				sigma,
+			)
+			sum = sum.Add(kernal[i-1][j-1])
 		}
 	}
-	return output
+	for i, kCol := range kernal {
+		for j, kValue := range kCol {
+			kernal[i][j] = kValue.Div(sum)
+		}
+	}
+	return kernal
+}
+
+/*
+ * Assumes 1 <= (x,y) <= (2 * radius) + 1
+ */
+func gaussianKernalValue(x, y, radius, sigma decimal.Decimal) decimal.Decimal {
+	one := decimal.NewFromInt(1)
+	two := decimal.NewFromInt(2)
+	minusOne := decimal.NewFromInt(-1)
+	pi := decimal.NewFromFloat(math.Pi)
+
+	exNum := x.Sub(radius.Add(one)).Pow(two).Add(y.Sub(radius.Add(one)).Pow(two)).Mul(minusOne)
+	exDom := sigma.Pow(two).Mul(two)
+
+	ex, _ := exNum.Div(exDom).ExpTaylor(3)
+	dom := pi.Mul(exDom)
+	return ex.Div(dom)
 }
 
 /*SobelHandle runs Sobel kernal over image*/
 func SobelHandle(loadedImage image.Image) image.Image {
-	return actionengine.ActOnImageKernal(loadedImage, sobelFilter, 3, runtime.GOMAXPROCS(0)/5)
+	return actionengine.ActOnImageKernal(loadedImage, sobelFilter, 3)
 }
 func sobelFilter(p image.Point, imageOld image.Image, kernalSize int) [][]color.Color {
 
@@ -63,7 +108,7 @@ func sobelFilter(p image.Point, imageOld image.Image, kernalSize int) [][]color.
 			{2, 0, -2},
 			{1, 0, -1}}
 		// gX, gY := float64(0), float64(0)
-		ForSquare(kernalSize, func(i, j int) {
+		utils.ForSquare(kernalSize, func(i, j int) {
 			r, _, _, _ := imageOld.At(p.X+i, p.Y+j).RGBA()
 
 			gX += kernalX[i][j] * float64(r)
@@ -122,10 +167,21 @@ func boundsKernal(p image.Point, imageIn image.Image, kernalSize int) image.Poin
 	return p
 }
 
-func ForSquare(kernalSize int, action func(int, int)) {
-	for i := 0; i < kernalSize; i++ {
-		for j := 0; j < kernalSize; j++ {
-			action(i, j)
-		}
+func pointKernalInBounds(p image.Point, imageIn image.Image, radius int64) bool {
+	bounds := imageIn.Bounds()
+	r := int(radius)
+	return p.X-r < bounds.Min.X ||
+		p.X+r < bounds.Max.X ||
+		p.Y-r < bounds.Min.Y ||
+		p.Y+r < bounds.Max.Y
+}
+
+func GetPointColor(p image.Point, imageIn image.Image) color.RGBA {
+	red, green, blue, alpha := imageIn.At(p.X, p.Y).RGBA()
+	return color.RGBA{
+		R: uint8(red),
+		B: uint8(green),
+		G: uint8(blue),
+		A: uint8(alpha),
 	}
 }

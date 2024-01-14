@@ -13,7 +13,6 @@ import (
 
 	"github.com/urfave/cli"
 	"jlowell000.github.io/init/internal/kernalfunctions"
-	"jlowell000.github.io/init/internal/pixalfunctions"
 )
 
 const (
@@ -22,11 +21,11 @@ const (
 
 var (
 	availableFunctions = map[string]func(image.Image) image.Image{
-		"greyscale":       pixalfunctions.GreyscaleHandle,
-		"gaussian":        kernalfunctions.GaussianHandle,
-		"sobel":           kernalfunctions.SobelHandle,
-		"doubleThreshold": pixalfunctions.DoubleThresholdHandle,
-		"fillInGaps":      pixalfunctions.FillInGapsHandle,
+		// "greyscale":       pixalfunctions.GreyscaleHandle,
+		"gaussian": kernalfunctions.GaussianHandle,
+		// "sobel":           kernalfunctions.SobelHandle,
+		// "doubleThreshold": pixalfunctions.DoubleThresholdHandle,
+		// "fillInGaps":      pixalfunctions.FillInGapsHandle,
 	}
 )
 
@@ -127,7 +126,7 @@ func contains(list []string, e string) bool {
 }
 
 func createDerivedFileNames(filePath string, mod string) string {
-	return path.Dir(filePath) + string(os.PathSeparator) + mod + "_" + path.Base(filePath)
+	return path.Dir(filePath) + string(os.PathSeparator) + "output" + string(os.PathSeparator) + mod + "_" + path.Base(filePath)
 }
 
 func readFileToImage(fileName string) image.Image {
